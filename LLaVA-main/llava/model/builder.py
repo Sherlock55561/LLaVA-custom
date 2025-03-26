@@ -26,6 +26,7 @@ from llava.model.multimodal_projector.builder import build_vision_projector
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", device="cuda", use_flash_attn=False, **kwargs):
     kwargs = {"device_map": device_map, **kwargs}
+    mm_projector = build_vision_projector(cfg_pretrained)
 
     if device != "cuda":
         kwargs['device_map'] = {"": device}
