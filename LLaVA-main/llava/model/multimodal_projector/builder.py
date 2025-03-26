@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import re
-from .custom_projectors import QFormerProjector, HybridProjector
+from llava.model.multimodal_projector.custom_projectors import (
+    QFormerProjector, 
+    HybridProjector
+)
 
 
 class IdentityMap(nn.Module):
