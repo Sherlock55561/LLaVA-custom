@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import re
-from custom_projectors import QFormerProjector, HybridProjector
+from .custom_projectors import QFormerProjector, HybridProjector
+
 
 class IdentityMap(nn.Module):
     def __init__(self):
