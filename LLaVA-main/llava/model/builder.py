@@ -21,6 +21,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BitsAn
 import torch
 from llava.model import *
 from llava.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+from llava.model.multimodal_projector.builder import build_vision_projector
 
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", device="cuda", use_flash_attn=False, **kwargs):
