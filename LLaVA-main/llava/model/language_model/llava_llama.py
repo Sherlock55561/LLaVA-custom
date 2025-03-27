@@ -25,17 +25,14 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
 
 from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
-from dataclasses import dataclass
-from transformers import LlamaConfig
+from dataclasses import dataclass, field
+from transformers.models.llama.configuration_llama import LlamaConfig
 
 
 class LlavaConfig(LlamaConfig):
-    # Merge any additional attribute maps
-    attribute_map = {
-        **LlamaConfig.attribute_map,
-        "attention_dropout": "attention_dropout",
-    }
-    model_type = "llava_llama"
+    model_type: str = "llava_llama"
+    # Add your custom attributes:
+    attention_dropout: float = field(default=0.1, metadata={"help": "Attention dropout probability"})
 
     def __init__(self, **kwargs):
         # 1) If 'attention_dropout' is missing, inject it into kwargs
