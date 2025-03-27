@@ -83,6 +83,9 @@ def load_pretrained_model(
             lora_cfg_pretrained = LlavaConfig.from_pretrained(model_path)
 
             tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
+            if not hasattr(model.config, "attention_dropout"):
+              model.config.attention_dropout = 0.1  # or any default you like
+              print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
             model = LlavaLlamaForCausalLM.from_pretrained(
                 model_base,
                 low_cpu_mem_usage=True,
