@@ -66,11 +66,10 @@ def load_pretrained_model(
             print('Loading LLaVA LoRA from base model...')
             # Example: lora_cfg_pretrained = LlavaConfig.from_pretrained(model_path)
             lora_cfg_pretrained = LlavaConfig.from_pretrained(model_path)
-
-            tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
             if not hasattr(model.config, "attention_dropout"):
               model.config.attention_dropout = 0.1  # or any default you like
               print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+            tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
             model = LlavaLlamaForCausalLM.from_pretrained(
                 model_base,
                 low_cpu_mem_usage=True,
@@ -133,11 +132,12 @@ def load_pretrained_model(
                         os.path.join(model_base, 'configuration_mpt.py'),
                         os.path.join(model_path, 'configuration_mpt.py')
                     )
-                tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=True)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
                 if not hasattr(model.config, "attention_dropout"):
-                   model.config.attention_dropout = 0.1  # or any default you like
-                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+                     model.config.attention_dropout = 0.1  # or any default you like
+                     print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")                
+                tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=True)
+
                 model = LlavaMptForCausalLM.from_pretrained(
                     model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs
                 )
@@ -157,10 +157,10 @@ def load_pretrained_model(
 
         else:
             if 'mpt' in model_name.lower():
-                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 if not hasattr(model.config, "attention_dropout"):
-                   model.config.attention_dropout = 0.1  # or any default you like
-                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+                    model.config.attention_dropout = 0.1  # or any default you like
+                    print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 model = LlavaMptForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
             elif 'mistral' in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -172,11 +172,12 @@ def load_pretrained_model(
                     low_cpu_mem_usage=True,
                     **kwargs
                 )
-            else:
-                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+            else:                
                 if not hasattr(model.config, "attention_dropout"):
                    model.config.attention_dropout = 0.1  # or any default you like
                    print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+
                 model = LlavaLlamaForCausalLM.from_pretrained(
                     model_path,
                     low_cpu_mem_usage=True,
@@ -199,11 +200,17 @@ def load_pretrained_model(
         else:
             # No base model provided
             if 'mpt' in model_name.lower():
+                if not hasattr(model.config, "attention_dropout"):
+                   model.config.attention_dropout = 0.1  # or any default you like
+                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path, low_cpu_mem_usage=True, trust_remote_code=True, **kwargs
                 )
             else:
+                if not hasattr(model.config, "attention_dropout"):
+                   model.config.attention_dropout = 0.1  # or any default you like
+                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path, low_cpu_mem_usage=True, **kwargs
