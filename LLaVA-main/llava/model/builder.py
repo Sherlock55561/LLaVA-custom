@@ -150,9 +150,9 @@ def load_pretrained_model(
                     )
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=True)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
-               if not hasattr(model.config, "attention_dropout"):
-                 model.config.attention_dropout = 0.1  # or any default you like
-                 print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+                  if not hasattr(model.config, "attention_dropout"):
+                   model.config.attention_dropout = 0.1  # or any default you like
+                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 model = LlavaMptForCausalLM.from_pretrained(
                     model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs
                 )
