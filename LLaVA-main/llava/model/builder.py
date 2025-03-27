@@ -1,18 +1,3 @@
-#    Copyright 2023 Haotian Liu
-#
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
-
-
 import os
 import warnings
 import shutil
@@ -150,7 +135,7 @@ def load_pretrained_model(
                     )
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=True)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
-                  if not hasattr(model.config, "attention_dropout"):
+                if not hasattr(model.config, "attention_dropout"):
                    model.config.attention_dropout = 0.1  # or any default you like
                    print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 model = LlavaMptForCausalLM.from_pretrained(
@@ -171,29 +156,32 @@ def load_pretrained_model(
             model.load_state_dict(mm_projector_weights, strict=False)
 
         else:
-            # load from model_path directly
             if 'mpt' in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
-              if not hasattr(model.config, "attention_dropout"):
-                 model.config.attention_dropout = 0.1  # or any default you like
-                 print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
-               model = LlavaMptForCausalLM.from_pretrained(
-                    model_path, low_cpu_mem_usage=True, **kwargs
-                )
+                if not hasattr(model.config, "attention_dropout"):
+                   model.config.attention_dropout = 0.1  # or any default you like
+                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+                model = LlavaMptForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
             elif 'mistral' in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 if not hasattr(model.config, "attention_dropout"):
-              model.config.attention_dropout = 0.1  # or any default you like
-              print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+                   model.config.attention_dropout = 0.1  # or any default you like
+                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 model = LlavaMistralForCausalLM.from_pretrained(
-                    model_path, low_cpu_mem_usage=True, **kwargs
+                    model_path,
+                    low_cpu_mem_usage=True,
+                    **kwargs
                 )
             else:
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+                if not hasattr(model.config, "attention_dropout"):
+                   model.config.attention_dropout = 0.1  # or any default you like
+                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 model = LlavaLlamaForCausalLM.from_pretrained(
-                    model_path, low_cpu_mem_usage=True, **kwargs
+                    model_path,
+                    low_cpu_mem_usage=True,
+                    **kwargs
                 )
-
     else:
         # Standard language model (not llava)
         if model_base is not None:
