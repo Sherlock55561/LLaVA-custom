@@ -30,12 +30,29 @@ from transformers import LlamaConfig
 
 
 class LlavaConfig(LlamaConfig):
-   attribute_map = {**LlamaConfig.attribute_map, "attention_dropout": "attention_dropout"}
-   model_type = "llava_llama"
-   def __init__(self, **kwargs):
+    # Merge any additional attribute maps
+    attribute_map = {
+        **LlamaConfig.attribute_map,
+        "attention_dropout": "attention_dropout",
+    }
+    model_type = "llava_llama"
+
+    def __init__(self, **kwargs):
+        # 1) If 'attention_dropout' is missing, inject it into kwargs
+        if "attention_dropout" not in kwargs:
+            kwargs["attention_dropout"] = 0.1  # or your desired default
+
+        # 2) Now call parent's constructor with updated kwargs
         super().__init__(**kwargs)
-        if 'attention_dropout' not in kwargs:
-            self.attention_dropout = 0.1
+
+
+    def __init__(self, **kwargs):
+        # 1) If 'attention_dropout' is missing, inject it into kwargs
+        if "attention_dropout" not in kwargs:
+            kwargs["attention_dropout"] = 0.1  # or your desired default
+
+        # 2) Now call parent's constructor with updated kwargs
+        super().__init__(**kwargs)
 
 
 class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
