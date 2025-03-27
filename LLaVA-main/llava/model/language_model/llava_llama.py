@@ -32,7 +32,7 @@ class LlavaConfig(LlamaConfig):
         # Set default value if not provided
     if 'attention_dropout' not in kwargs:
         self.attention_dropout = 0.1
-    model_type = "llava_llama"
+    model_type = "llama"
 
 
 class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
