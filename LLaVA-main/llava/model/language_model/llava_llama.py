@@ -28,6 +28,11 @@ from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 
 class LlavaConfig(LlamaConfig):
+ def __init__(self, **kwargs):
+ super().__init__(**kwargs)
+        # Set default value if not provided
+    if 'attention_dropout' not in kwargs:
+        self.attention_dropout = 0.1
     model_type = "llava_llama"
 
 
