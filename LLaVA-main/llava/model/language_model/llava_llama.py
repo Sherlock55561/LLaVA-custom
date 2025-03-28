@@ -31,8 +31,8 @@ from transformers.models.llama.configuration_llama import LlamaConfig
 
 class LlavaConfig(LlamaConfig):
     model_type: str = "llava_llama"
-    # Add your custom attributes:
-    attention_dropout: float = field(default=0.1, metadata={"help": "Attention dropout probability"})
+    attention_dropout: float = 0.1
+    vocab_size: int = 32000 
 
     def __init__(self, **kwargs):
         # 1) If 'attention_dropout' is missing, inject it into kwargs
