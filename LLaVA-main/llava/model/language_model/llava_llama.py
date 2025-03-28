@@ -31,12 +31,6 @@ from transformers.models.llama.configuration_llama import LlamaConfig
 class LlavaConfig(LlamaConfig):
     model_type = "llava_llama"
 
-    def __init__(self, vocab_size=32000, attention_dropout=0.1, **kwargs):
-        super().__init__(**kwargs)
-        self.vocab_size = vocab_size
-        self.attention_dropout = attention_dropout
-        
-
 
 class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
     config_class = LlavaConfig
