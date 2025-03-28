@@ -1,35 +1,25 @@
- import os
- import warnings
- import shutil
- 
- from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BitsAndBytesConfig
- import torch
- from llava.model import *
- from llava.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
- from llava.model.multimodal_projector.builder import build_vision_projector
- from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM, LlavaConfig
- from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM
- from llava.model.language_model.llava_mpt import LlavaMptForCausalLM
- from llava.model.language_model.llava_mistral import LlavaMistralForCausalLM
- from llava_config import LlavaConfig
- from transformers import AutoTokenizer, CLIPImageProcessor
+import os
+import warnings
+import shutil
+
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BitsAndBytesConfig
+import torch
+from llava.model import *
+from llava.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+from llava.model.multimodal_projector.builder import build_vision_projector
+from llava.model.language_model.llava_llama import LlavaConfig
+from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM
+from llava.model.language_model.llava_mpt import LlavaMptForCausalLM
+from llava.model.language_model.llava_mistral import LlavaMistralForCausalLM
+from transformers import AutoTokenizer, CLIPImageProcessor
 
 
-def load_pretrained_model(
-    model_path,
-    model_base,
-    model_name="llava-v1.5-7b",
-    mm_projector_type="qformer",
-    load_4bit=False,
-    load_8bit=False,
-    device_map="auto"
-):
-
+def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", device="cuda", use_flash_attn=False, **kwargs):
     kwargs = {"device_map": device_map, **kwargs}
+
     if device != "cuda":
         kwargs['device_map'] = {"": device}
 
-    # Step 2: handle quantization arguments
     if load_8bit:
         kwargs['load_in_8bit'] = True
     elif load_4bit:
@@ -43,69 +33,46 @@ def load_pretrained_model(
     else:
         kwargs['torch_dtype'] = torch.float16
 
-    # Step 3: optionally use flash attention
     if use_flash_attn:
         kwargs['attn_implementation'] = 'flash_attention_2'
 
-    # Step 4: If the model name indicates "llava"
     if 'llava' in model_name.lower():
-        # 4a: If LoRA
+        # Load LLaVA model
         if 'lora' in model_name.lower() and model_base is None:
-            warnings.warn(
-                "There is `lora` in model name but no `model_base` is provided. "
-                "If you are loading a LoRA model, please provide the `model_base` argument. "
-                "Detailed instruction: https://github.com/haotian-liu/LLaVA#launch-a-model-worker-lora-weights-unmerged."
-            )
-
+            warnings.warn('There is `lora` in model name but no `model_base` is provided. If you are loading a LoRA model, please provide the `model_base` argument. Detailed instruction: https://github.com/haotian-liu/LLaVA#launch-a-model-worker-lora-weights-unmerged.')
         if 'lora' in model_name.lower() and model_base is not None:
-            # LoRA path
-            print('Loading LLaVA LoRA from base model...')
-            # Example: lora_cfg_pretrained = LlavaConfig.from_pretrained(model_path)
-            lora_cfg_pretrained = LlavaConfig.from_pretrained(model_path)
-            tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
-            model = LlavaLlamaForCausalLM.from_pretrained(
-                model_base,
-                low_cpu_mem_usage=True,
-                config=lora_cfg_pretrained,
-                **kwargs
-            )
+            cfg_pretrained = LlavaConfig.from_pretrained(model_path)
 
-            # Possibly fix output embeddings if mismatch
+    # Robust fix explicitly handling nested vocab_size
+            if not hasattr(cfg_pretrained, 'vocab_size'):
+                if hasattr(cfg_pretrained, 'text_config'):
+                    cfg_pretrained.vocab_size = cfg_pretrained.text_config.vocab_size
+            else:
+                 cfg_pretrained.vocab_size = 32000  # fallback default
+            tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
+            print('Loading LLaVA from base model...')
+            model = LlavaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
             token_num, tokem_dim = model.lm_head.out_features, model.lm_head.in_features
             if model.lm_head.weight.shape[0] != token_num:
-                model.lm_head.weight = torch.nn.Parameter(
-                    torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype)
-                )
-                model.model.embed_tokens.weight = torch.nn.Parameter(
-                    torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype)
-                )
+                model.lm_head.weight = torch.nn.Parameter(torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype))
+                model.model.embed_tokens.weight = torch.nn.Parameter(torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype))
 
             print('Loading additional LLaVA weights...')
-            non_lora_path = os.path.join(model_path, 'non_lora_trainables.bin')
-            if os.path.exists(non_lora_path):
-                non_lora_trainables = torch.load(non_lora_path, map_location='cpu')
+            if os.path.exists(os.path.join(model_path, 'non_lora_trainables.bin')):
+                non_lora_trainables = torch.load(os.path.join(model_path, 'non_lora_trainables.bin'), map_location='cpu')
             else:
-                # Attempt from HF Hub if not local
+                # this is probably from HF Hub
                 from huggingface_hub import hf_hub_download
                 def load_from_hf(repo_id, filename, subfolder=None):
                     cache_file = hf_hub_download(
                         repo_id=repo_id,
                         filename=filename,
-                        subfolder=subfolder
-                    )
+                        subfolder=subfolder)
                     return torch.load(cache_file, map_location='cpu')
                 non_lora_trainables = load_from_hf(model_path, 'non_lora_trainables.bin')
-
-            # Tweak keys if they have prefixes
-            non_lora_trainables = {
-                (k[11:] if k.startswith('base_model.') else k): v
-                for k, v in non_lora_trainables.items()
-            }
+            non_lora_trainables = {(k[11:] if k.startswith('base_model.') else k): v for k, v in non_lora_trainables.items()}
             if any(k.startswith('model.model.') for k in non_lora_trainables):
-                non_lora_trainables = {
-                    (k[6:] if k.startswith('model.') else k): v
-                    for k, v in non_lora_trainables.items()
-                }
+                non_lora_trainables = {(k[6:] if k.startswith('model.') else k): v for k, v in non_lora_trainables.items()}
             model.load_state_dict(non_lora_trainables, strict=False)
 
             from peft import PeftModel
@@ -114,75 +81,58 @@ def load_pretrained_model(
             print('Merging LoRA weights...')
             model = model.merge_and_unload()
             print('Model is loaded...')
-
         elif model_base is not None:
-            # base LLaVA with mm_projector only
+            # this may be mm projector only
             print('Loading LLaVA from base model...')
             if 'mpt' in model_name.lower():
-                # MPT-based
                 if not os.path.isfile(os.path.join(model_path, 'configuration_mpt.py')):
-                    shutil.copyfile(
-                        os.path.join(model_base, 'configuration_mpt.py'),
-                        os.path.join(model_path, 'configuration_mpt.py')
-                    )
-                cfg_pretrained = LlavaConfig.from_pretrained(model_path)
-                cfg_pretrained.mm_projector_type = mm_projector_type
-       
+                    shutil.copyfile(os.path.join(model_base, 'configuration_mpt.py'), os.path.join(model_path, 'configuration_mpt.py'))
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=True)
-
-                model = LlavaMptForCausalLM.from_pretrained(
-                    model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs
-                )
+                cfg_pretrained = LlavaConfig.from_pretrained(model_path, trust_remote_code=True)
+                if not hasattr(cfg_pretrained, 'vocab_size'):
+                    if hasattr(cfg_pretrained, 'text_config'):
+                      cfg_pretrained.vocab_size = cfg_pretrained.text_config.vocab_size
+                    else:
+                      cfg_pretrained.vocab_size = 32000  # fallback default
+                model = LlavaMptForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
             else:
-                # LLaMA-based
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
-                cfg_pretrained = AutoConfig.from_pretrained(model_path)
-                model = LlavaLlamaForCausalLM.from_pretrained(
-                    model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs
-                )
+                cfg_pretrained = LlavaConfig.from_pretrained(model_path)
+                if not hasattr(cfg_pretrained, 'vocab_size'):
+                    if hasattr(cfg_pretrained, 'text_config'):
+                      cfg_pretrained.vocab_size = cfg_pretrained.text_config.vocab_size
+                    else:
+                      cfg_pretrained.vocab_size = 32000  # fallback default
+                model = LlavaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
 
-            # load mm_projector
-            projector_path = os.path.join(model_path, 'mm_projector.bin')
-            mm_projector_weights = torch.load(projector_path, map_location='cpu')
+            mm_projector_weights = torch.load(os.path.join(model_path, 'mm_projector.bin'), map_location='cpu')
             mm_projector_weights = {k: v.to(torch.float16) for k, v in mm_projector_weights.items()}
             model.load_state_dict(mm_projector_weights, strict=False)
-
         else:
             if 'mpt' in model_name.lower():
-                if not hasattr(model.config, "attention_dropout"):
-                    model.config.attention_dropout = 0.1  # or any default you like
-                    print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 model = LlavaMptForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
             elif 'mistral' in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
-                if not hasattr(model.config, "attention_dropout"):
-                   model.config.attention_dropout = 0.1  # or any default you like
-                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 model = LlavaMistralForCausalLM.from_pretrained(
                     model_path,
                     low_cpu_mem_usage=True,
                     **kwargs
                 )
-            else:                
-                if not hasattr(model.config, "attention_dropout"):
-                   model.config.attention_dropout = 0.1  # or any default you like
-                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
+            else:
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-
                 model = LlavaLlamaForCausalLM.from_pretrained(
                     model_path,
                     low_cpu_mem_usage=True,
                     **kwargs
                 )
     else:
-        # Standard language model (not llava)
+        # Load language model
         if model_base is not None:
+            # PEFT model
             from peft import PeftModel
             tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
-            model = AutoModelForCausalLM.from_pretrained(
-                model_base, low_cpu_mem_usage=True, **kwargs
-            )
+            model = AutoModelForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, **kwargs)
             print(f"Loading LoRA weights from {model_path}")
             model = PeftModel.from_pretrained(model, model_path)
             print(f"Merging weights")
@@ -190,31 +140,16 @@ def load_pretrained_model(
             print('Convert to FP16...')
             model.to(torch.float16)
         else:
-            # No base model provided
+            use_fast = False
             if 'mpt' in model_name.lower():
-                if not hasattr(model.config, "attention_dropout"):
-                   model.config.attention_dropout = 0.1  # or any default you like
-                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
-                model = AutoModelForCausalLM.from_pretrained(
-                    model_path, low_cpu_mem_usage=True, trust_remote_code=True, **kwargs
-                )
+                model = AutoModelForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, trust_remote_code=True, **kwargs)
             else:
-                if not hasattr(model.config, "attention_dropout"):
-                   model.config.attention_dropout = 0.1  # or any default you like
-                   print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-                model = AutoModelForCausalLM.from_pretrained(
-                    model_path, low_cpu_mem_usage=True, **kwargs
-                )
+                model = AutoModelForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
-    # Patch attention_dropout if missing
-    if not hasattr(model.config, "attention_dropout"):
-        model.config.attention_dropout = 0.1  # or any default you like
-        print(f"Patched model.config.attention_dropout = {model.config.attention_dropout}")
-
-    # Possibly load image processor if it's LLaVA
     image_processor = None
+
     if 'llava' in model_name.lower():
         mm_use_im_start_end = getattr(model.config, "mm_use_im_start_end", False)
         mm_use_im_patch_token = getattr(model.config, "mm_use_im_patch_token", True)
@@ -224,7 +159,6 @@ def load_pretrained_model(
             tokenizer.add_tokens([DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN], special_tokens=True)
         model.resize_token_embeddings(len(tokenizer))
 
-        # get vision tower
         vision_tower = model.get_vision_tower()
         if not vision_tower.is_loaded:
             vision_tower.load_model(device_map=device_map)
@@ -232,12 +166,9 @@ def load_pretrained_model(
             vision_tower.to(device=device_map, dtype=torch.float16)
         image_processor = vision_tower.image_processor
 
-    # set context length
     if hasattr(model.config, "max_sequence_length"):
         context_len = model.config.max_sequence_length
     else:
         context_len = 2048
 
     return tokenizer, model, image_processor, context_len
-
-
