@@ -28,28 +28,14 @@ from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 from dataclasses import dataclass, field
 from transformers.models.llama.configuration_llama import LlamaConfig
 
-@dataclass  # <-- THIS IS CRITICAL AND MISSING IN YOUR CURRENT CODE
 class LlavaConfig(LlamaConfig):
-    model_type: str = "llava_llama"
-    attention_dropout: float = 0.1
-    vocab_size: int = 32000
+    model_type = "llava_llama"
 
-    def __init__(self, **kwargs):
-        # 1) If 'attention_dropout' is missing, inject it into kwargs
-        if "attention_dropout" not in kwargs:
-            kwargs["attention_dropout"] = 0.1  # or your desired default
-
-        # 2) Now call parent's constructor with updated kwargs
+    def __init__(self, vocab_size=32000, attention_dropout=0.1, **kwargs):
         super().__init__(**kwargs)
-
-
-    def __init__(self, **kwargs):
-        # 1) If 'attention_dropout' is missing, inject it into kwargs
-        if "attention_dropout" not in kwargs:
-            kwargs["attention_dropout"] = 0.1  # or your desired default
-
-        # 2) Now call parent's constructor with updated kwargs
-        super().__init__(**kwargs)
+        self.vocab_size = vocab_size
+        self.attention_dropout = attention_dropout
+        
 
 
 class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
