@@ -13,7 +13,7 @@
  from llava.model.language_model.llava_mistral import LlavaMistralForCausalLM
  from llava_config import LlavaConfig
  from transformers import AutoTokenizer, CLIPImageProcessor
- from llava.model.llava_llama import LlavaLlamaForCausalLM
+
 
 def load_pretrained_model(
     model_path,
