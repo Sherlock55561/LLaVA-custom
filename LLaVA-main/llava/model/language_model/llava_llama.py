@@ -26,13 +26,13 @@ from transformers.generation.utils import GenerateOutput
 
 from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 from dataclasses import dataclass, field
-from transformers.models.llama.configuration_llama import LlamaConfig
+from transformers.models.llama.configuration_llama import LlamaConfi
 
-
+@dataclass  # <-- THIS IS CRITICAL AND MISSING IN YOUR CURRENT CODE
 class LlavaConfig(LlamaConfig):
     model_type: str = "llava_llama"
     attention_dropout: float = 0.1
-    vocab_size: int = 32000 
+    vocab_size: int = 3200
 
     def __init__(self, **kwargs):
         # 1) If 'attention_dropout' is missing, inject it into kwargs
