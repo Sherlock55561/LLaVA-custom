@@ -30,21 +30,30 @@ from transformers.models.llama.configuration_llama import LlamaConfig
 
 class LlavaConfig(LlamaConfig):
     model_type = "llava_llama"
-    
-    def __init__(self, 
-                 vocab_size=32000, 
-                 attention_dropout=0.1, 
+
+    attribute_map = {
+        **LlamaConfig.attribute_map,
+        "vocab_size": "vocab_size",
+        "attention_dropout": "attention_dropout",
+    }
+
+    def __init__(self,
+                 vocab_size=32000,
+                 attention_dropout=0.1,
                  mm_projector_type="mlp2x_gelu",
                  mm_hidden_size=1024,
                  **kwargs):
-        
+
         kwargs.setdefault("vocab_size", vocab_size)
         kwargs.setdefault("attention_dropout", attention_dropout)
         
+        super().__init__(**kwargs)  # Call superclass first
+
+        # Explicitly set attributes AFTER superclass init
+        self.vocab_size = kwargs.get('vocab_size', vocab_size)
+        self.attention_dropout = kwargs.get('attention_dropout', attention_dropout)
         self.mm_projector_type = mm_projector_type
         self.mm_hidden_size = mm_hidden_size
-
-        super().__init__(**kwargs)
 
 
 
