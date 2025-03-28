@@ -32,15 +32,9 @@ class LlavaConfig(LlamaConfig):
     model_type = "llava_llama"
 
     def __init__(self, **kwargs):
-        vocab_size = kwargs.pop("vocab_size", 32000)
-        attention_dropout = kwargs.pop("attention_dropout", 0.1)
-        
-        # explicitly initialize superclass correctly
-        super().__init__(vocab_size=vocab_size, attention_dropout=attention_dropout, **kwargs)
-        
-        # explicitly set the attributes to ensure correctness
-        self.vocab_size = vocab_size
-        self.attention_dropout = attention_dropout
+        kwargs.setdefault("vocab_size", 32000)
+        kwargs.setdefault("attention_dropout", 0.1)
+        super().__init__(**kwargs)
 
 
 class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
