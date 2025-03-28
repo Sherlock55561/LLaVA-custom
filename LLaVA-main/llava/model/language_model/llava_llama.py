@@ -26,7 +26,7 @@ from transformers.generation.utils import GenerateOutput
 
 from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 from dataclasses import dataclass, field
-from transformers.models.llama.configuration_llama import LlamaConfi
+from transformers.models.llama.configuration_llama import LlamaConfig
 
 @dataclass  # <-- THIS IS CRITICAL AND MISSING IN YOUR CURRENT CODE
 class LlavaConfig(LlamaConfig):
